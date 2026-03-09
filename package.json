@@ -9,9 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@upstash/redis": "^1.36.4",
+    "inngest": "^3.52.6",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -19,6 +23,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
