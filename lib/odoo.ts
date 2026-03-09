@@ -1,6 +1,4 @@
 const BASE = process.env.ODOO_URL!
-const AUTH = () =>
-  Buffer.from(`${process.env.ODOO_EMAIL}:${process.env.ODOO_API_KEY}`).toString('base64')
 
 export interface OdooMessage {
   id: number
@@ -11,7 +9,34 @@ export interface OdooMessage {
   res_model: string
 }
 
+// Authenticate with email + API key to get a session cookie.
+// Called once per Inngest invocation (serverless = fresh process each time).
+async function authenticate(): Promise<string> {
+  const res = await fetch(`${BASE}/web/session/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'call',
+      id: 1,
+      params: {
+        db: false, // Odoo Online auto-detects the DB from the hostname
+        login: process.env.ODOO_EMAIL,
+        password: process.env.ODOO_API_KEY,
+      },
+    }),
+  })
+  const setCookie = res.headers.get('set-cookie') ?? ''
+  const sessionId = setCookie.match(/session_id=([^;]+)/)?.[1]
+  if (!sessionId) {
+    const body = (await res.json()) as unknown
+    throw new Error(`Odoo auth failed: ${JSON.stringify(body)}`)
+  }
+  return sessionId
+}
+
 async function rpc(
+  sessionId: string,
   model: string,
   method: string,
   args: unknown[],
@@ -21,7 +46,7 @@ async function rpc(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Basic ${AUTH()}`,
+      Cookie: `session_id=${sessionId}`,
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
@@ -36,12 +61,14 @@ async function rpc(
 }
 
 export async function findJarvisMessages(): Promise<OdooMessage[]> {
+  const sessionId = await authenticate()
   const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000)
     .toISOString()
     .replace('T', ' ')
     .slice(0, 19)
 
   return rpc(
+    sessionId,
     'mail.message',
     'search_read',
     [
@@ -60,7 +87,9 @@ export async function hasAlreadyReplied(
   channelId: number,
   afterDate: string
 ): Promise<boolean> {
+  const sessionId = await authenticate()
   const results = (await rpc(
+    sessionId,
     'mail.message',
     'search_read',
     [
@@ -76,7 +105,8 @@ export async function hasAlreadyReplied(
 }
 
 export async function postReply(channelId: number, body: string): Promise<void> {
-  await rpc('mail.channel', 'message_post', [channelId], {
+  const sessionId = await authenticate()
+  await rpc(sessionId, 'mail.channel', 'message_post', [channelId], {
     body,
     message_type: 'comment',
     subtype_xmlid: 'mail.mt_comment',
