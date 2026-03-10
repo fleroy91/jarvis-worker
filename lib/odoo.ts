@@ -1,5 +1,9 @@
 const BASE = process.env.ODOO_URL!
 
+// For Odoo Online the DB name equals the subdomain: https://mycompany.odoo.com → "mycompany"
+// Override with ODOO_DB env var if you use a custom domain.
+const DB = process.env.ODOO_DB ?? new URL(BASE).hostname.split('.')[0]
+
 export interface OdooMessage {
   id: number
   body: string
@@ -20,7 +24,7 @@ async function authenticate(): Promise<string> {
       method: 'call',
       id: 1,
       params: {
-        db: false, // Odoo Online auto-detects the DB from the hostname
+        db: DB,
         login: process.env.ODOO_EMAIL,
         password: process.env.ODOO_API_KEY,
       },
