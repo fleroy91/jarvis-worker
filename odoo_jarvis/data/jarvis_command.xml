@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Register /jarvis as a slash command in Odoo Discuss -->
+    <record id="jarvis_channel_command" model="mail.channel.command">
+        <field name="name">jarvis</field>
+        <field name="description">Ask Jarvis AI assistant</field>
+        <field name="channel_types">channel,chat,group</field>
+    </record>
+</odoo>
